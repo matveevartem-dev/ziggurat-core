@@ -1,0 +1,9 @@
+{
+  "cSpell.language": "en,ru", // Включаем поддержку обоих языков
+  "cSpell.checkComments": false, // Или просто вырубаем проверку внутри комментариев //
+  "cSpell.ignoreWords": [
+    "fetchData", 
+    "csrfToken",
+    "Yii"
+  ]
+}

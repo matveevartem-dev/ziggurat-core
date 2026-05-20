@@ -1,0 +1,135 @@
+services:
+  # FRONTEND (Nuxt 4)
+  core-ui:
+    build:
+      context: ./ui
+      dockerfile: ../infrastructure/front/Dockerfile
+    container_name: ziggurat-core-ui
+    networks:
+      - ziggurat-net
+    restart: unless-stopped
+    ports:
+      - ${UI_PORT}:${UI_PORT}
+    volumes:
+      - ./front:/app
+      - /app/node_modules
+      - ./infrastructure/system/etc/hosts:/etc/hosts
+      - ../volumes/shared-documents:/usr/share/shared-documents
+    env_file:
+      - .env
+    environment:
+      - NODE_OPTIONS=--max-old-space-size=8192
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+      - CORE_DOMAIN=${CORE_DOMAIN}
+      - CORE_URL=${CORE_URL}
+      - CORE_IP=${CORE_IP}
+      - API_URL=http://api:${API_PORT}
+      - UI_PORT=${UI_PORT}
+      - API_PORT=${API_PORT}
+    mem_limit: 8g
+    #command: sh -c "npm run build && npm run start"
+#    extra_hosts:
+#      - "${CORE_DOMAIN}:${CORE_IP}"
+
+  # PROXY-GATEWAY (RoadRunner + PHP 8.4)
+  core-api:
+    build:
+      context: .
+      dockerfile: ./infrastructure/api/Dockerfile
+    container_name: ziggurat-core-api
+    networks:
+      - ziggurat-net
+#      editor-net:
+#        ipv4_address: 172.20.0.10
+    restart: unless-stopped
+    ports:
+      - ${API_PORT}:${API_PORT}
+    volumes:
+      - ./api:/var/www
+      - ./infrastructure/api/.rr.yaml:/var/www/.rr.yaml
+      - ./infrastructure/system/etc/hosts:/etc/hosts
+      - ../volumes/shared-documents:/usr/share/shared-documents
+    env_file:
+      - .env
+    working_dir: /var/www
+    environment:
+      - CORE_DOMAIN=${CORE_DOMAIN}
+      - CORE_URL=${CORE_URL}
+      - CORE_IP=${CORE_IP}
+      - UI_PORT:${UI_PORT}
+      - API_PORT:${API_PORT}
+    extra_hosts:
+      - "${CORE_URL}:host-gateway"
+      - "${CORE_DOMAIN}:host-gateway"
+      - "${CORE_IP}:host-gateway"
+    depends_on:
+      - postgres
+      - redis
+
+  proxy-api:
+    build:
+      context: .
+      dockerfile: ./infrastructure/api/Dockerfile
+    container_name: ziggurat-proxy-api
+    networks:
+          - ziggurat-net
+#      editor-net:
+#        ipv4_address: 172.20.0.10
+    restart: unless-stopped
+    ports:
+      - ${API_PORT}:${API_PORT}
+    volumes:
+      - ./api:/var/www
+      - ./infrastructure/api/.rr.yaml:/var/www/.rr.yaml
+      - ./infrastructure/system/etc/hosts:/etc/hosts
+      - ../volumes/shared-documents:/usr/share/shared-documents
+    env_file:
+      - .env
+    working_dir: /var/www
+    environment:
+      - CORE_DOMAIN=${CORE_DOMAIN}
+      - CORE_URL=${CORE_URL}
+      - CORE_IP=${CORE_IP}
+      - UI_PORT:${UI_PORT}
+      - API_PORT:${API_PORT}
+    extra_hosts:
+      - "${CORE_URL}:host-gateway"
+      - "${CORE_DOMAIN}:host-gateway"
+      - "${CORE_IP}:host-gateway"
+    depends_on:
+      - postgres
+      - redis
+
+  # DATABASE (Postgres)
+  postgres:
+    image: postgres:15-alpine
+    container_name: v2-postgres
+    networks:
+      - ziggurat-net
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
+      - ./legacy:/var/lib/postgresql/import_data:ro
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../volumes/shared-documents:/usr/share/shared-documents
+
+  # CACHE (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: v2-redis
+    networks:
+      - ziggurat-net
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+
+networks:
+  ziggurat-net:
+    name: ziggurat-net
+    driver: bridge
+    external: true

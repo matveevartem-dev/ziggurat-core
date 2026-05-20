@@ -1,0 +1,10 @@
+{
+    "makefile.configureOnOpen": false
+    "php.validate.executablePath": "/usr/bin/php",
+    "php.executablePath": "/usr/bin/php",
+    "terminal.integrated.env.windows": {},
+    "terminal.integrated.env.osx": {},
+    "terminal.integrated.env.linux": {
+        "PATH": "/usr/bin:/home/artem/.local/bin:/home/artem/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/home/artem/.composer/vendor/bin:/home/artem/.dotnet/tools:/var/lib/snapd/snap/bin"
+    }
+}
